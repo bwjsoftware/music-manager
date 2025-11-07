@@ -57,22 +57,18 @@ def write_music_metadata(file, title=None, artists=None, album=None, genres=None
 def decode_file_name(s: str) -> dict:
     result = {}
 
-    pattern = r'(\w+):\s*(?:(\[[^\]]*\])|"((?:[^"\\]|\\.)*)")'
+    pattern = r'([\w\.]+):\s*(\[[^\]]*\]|\{[^{}]*\})'
     matches = re.findall(pattern, s)
 
-    for key, list_val, str_val in matches:
-        if list_val:
-            try:
-                value = ast.literal_eval(list_val)
-            except Exception:
-                value = list_val
+    for key, val in matches:
+        val = val.strip()
+        if val.startswith("[") and val.endswith("]"):
+            inner = re.findall(r'\{([^{}]*)\}', val)
+            value = [v.strip() for v in inner]
+        elif val.startswith("{") and val.endswith("}"):
+            value = val[1:-1].strip()
         else:
-            # Value is a quoted string, possibly with escapes
-            unescaped = str_val.encode("utf-8").decode("unicode_escape")
-            try:
-                value = ast.literal_eval(f'"{unescaped}"')
-            except Exception:
-                value = unescaped
+            value = val
 
         result[key] = value
 
