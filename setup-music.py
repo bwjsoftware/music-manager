@@ -1,6 +1,8 @@
 import shutil
 import mutagen
 from mutagen.easyid3 import EasyID3
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3NoHeaderError
 import os
 import sys
 import argparse
@@ -33,8 +35,18 @@ def get_music_metadata(file):
 
 
 def write_music_metadata(file, metadata: dict):
-    audio = mutagen.File(file, easy=True)
-    if not audio:
+    audio = None
+    try:
+        audio = EasyID3(file)
+    except ID3NoHeaderError:
+        new_file = MP3(file)
+        new_file.add_tags()
+        new_file.save()
+        audio = EasyID3(file)
+    except Exception as e:
+        sys.stderr.write(f"Error: {e}")
+
+    if not isinstance(audio, EasyID3):
         sys.stderr.write("Unsupported file type")
         return False
 
@@ -140,8 +152,8 @@ if __name__ == "__main__":
     for i in range(len(music_files)):
         file = music_files[i]
         metadata = parse_file_name(file)
-        write_music_metadata(file, metadata)
-        move_files(metadata, file, music)
+        if write_music_metadata(file, metadata):
+            move_files(metadata, file, music)
 
 
 
