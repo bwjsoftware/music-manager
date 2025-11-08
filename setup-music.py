@@ -1,9 +1,10 @@
+import shutil
 import mutagen
+from mutagen.easyid3 import EasyID3
 import os
 import sys
 import argparse
 import re
-import ast
 
 
 def find_music_files(file_type, start_path='./downloads'):
@@ -31,20 +32,19 @@ def get_music_metadata(file):
         }
 
 
-def write_music_metadata(file, title=None, artists=None, album=None, genres=None):
+def write_music_metadata(file, metadata: dict):
     audio = mutagen.File(file, easy=True)
     if not audio:
         sys.stderr.write("Unsupported file type")
         return False
 
-    if title:
-        audio['title'] = [title]
-    if artists:
-        audio['artist'] = artists if isinstance(artists, list) else [artists]
-    if album:
-        audio['album'] = [album]
-    if genres:
-        audio['genres'] = genres if isinstance(genres, list) else [genres]
+    for key, value in metadata.items():
+        if not isinstance(value, list):
+            value = [value]
+        if key in EasyID3.valid_keys.keys():
+            audio[key] = value
+        else:
+            sys.stderr.write(f"Invalid key: {key}")
 
     try:
         audio.save()
@@ -79,8 +79,28 @@ def parse_file_name(file):
     file_name_parts = file.split("/")
     file_type = file_name_parts[-1].split(".")[-1]
     decoded_file_name = decode_file_name(file_name_parts[-1])
-    print(decoded_file_name)
-    print(file_name_parts[-1])
+    return decoded_file_name
+
+
+def move_files(metadata: dict, src="./download", dest="./music/"):
+    dest += "/"
+    if metadata['artist'] == metadata['album']:
+        dest += str(metadata['artist'] + "/" +
+                    metadata['title'])
+    else:
+        dest += str(metadata['artist'] + "/" + metadata['album'] + "/" +
+                    metadata['title'])
+    dest += ".mp3"
+
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+
+    if os.path.exists(dest):
+        choice = input(f"File {dest} already exists\nReplace? [y/N]: ").strip().lower()
+        if choice in ("y", "yes"):
+            os.remove(dest)
+        else:
+            return
+    shutil.move(src, dest)
 
 
 if __name__ == "__main__":
@@ -118,6 +138,11 @@ if __name__ == "__main__":
         music_files = find_music_files(music_type, downloads)
 
     for i in range(len(music_files)):
-        parse_file_name(music_files[i])
+        file = music_files[i]
+        metadata = parse_file_name(file)
+        write_music_metadata(file, metadata)
+        move_files(metadata, file, music)
+
+
 
     
