@@ -96,6 +96,9 @@ def parse_file_name(file):
 
 def move_files(metadata: dict, src="./download", dest="./music/"):
     dest += "/"
+    if isinstance(metadata['artist'], list):
+        metadata['artist'] = metadata['artist'][0]
+
     if metadata['artist'] == metadata['album']:
         dest += str(metadata['artist'] + "/" +
                     metadata['title'])
