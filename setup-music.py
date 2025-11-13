@@ -55,8 +55,10 @@ def write_music_metadata(file, metadata: dict):
             value = [value]
         if key in EasyID3.valid_keys.keys():
             audio[key] = value
+        elif key == 'manual':
+            pass
         else:
-            sys.stderr.write(f"Invalid key: {key}")
+            sys.stderr.write(f"Invalid key: {key} For Writing File")
 
     try:
         audio.save()
@@ -94,17 +96,21 @@ def parse_file_name(file):
     return decoded_file_name
 
 
-def move_files(metadata: dict, src="./download", dest="./music/"):
+def move_files(metadata: dict, src="./download", dest="./music"):
     dest += "/"
-    if isinstance(metadata['artist'], list):
-        metadata['artist'] = metadata['artist'][0]
-
-    if metadata['artist'] == metadata['album']:
-        dest += str(metadata['artist'] + "/" +
-                    metadata['title'])
+    if metadata.get('manual') == 'true':
+        dest += input(f'File: {src}\nPlease give relative path starting from the music directory (Do NOT include the file name but do include ending "/"):')
+        dest += str(metadata['title'])
     else:
-        dest += str(metadata['artist'] + "/" + metadata['album'] + "/" +
-                    metadata['title'])
+        if isinstance(metadata['artist'], list):
+            metadata['artist'] = metadata['artist'][0]
+
+        if metadata['artist'] == metadata['album']:
+            dest += str(metadata['artist'] + "/" +
+                        metadata['title'])
+        else:
+            dest += str(metadata['artist'] + "/" + metadata['album'] + "/" +
+                        metadata['title'])
     dest += ".mp3"
 
     os.makedirs(os.path.dirname(dest), exist_ok=True)
