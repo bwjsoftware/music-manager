@@ -58,6 +58,7 @@ other options include
 ### Splitting chapters ###
 ```
 python split_audiobook.py {path to audio file} {path to the chapters timestamp file}
+```
 
 other options include
 - `-o` or `--outdir` ouput directory for chapter files (default: `chapters/`
