@@ -1,4 +1,5 @@
-# This is a music manager made in Python with the mutagen library
+# Music
+## This is a music manager made in Python with the mutagen library
 ## Please note that currently only mp3 files are supported. Support for other audio formats will be comming soon
 
 ## Use
@@ -34,3 +35,30 @@ python3 music-setup.py -t {type} -d {downloads folder} -m {music folder}
 ```
 A type is required (Only mp3 currently supported). A download folder and music folder are optional, by default it will look in the current directory for `./downloads` and `./music`.
 If a downloads and/or music directory are given they must be absolute paths.
+
+# Audiobooks #
+
+## Disclaimer most of the python scripts have been written with claude code ##
+
+## Usage ##
+### Finding Chapters ###
+```
+python find_chapters.py {path to audio file} -o {output file}
+```
+
+other options include 
+- `--vtt` for optional .vtt file
+- `--start` for a narrower search of a specific time frame of the audio file
+- `--end` ending of a narrower search of a specific time fram of the audio file
+- `--min-duration` minimun duration of silence used to help find chapter breaks
+- `--sort` `time` or `duration` sorting of how the silence durations are printed out
+- `--context-words` amount of words outputed from the .vtt file along with the silence breaks
+- `-o` or `--output` for output file of chapter selections
+
+### Splitting chapters ###
+```
+python split_audiobook.py {path to audio file} {path to the chapters timestamp file}
+
+other options include
+- `-o` or `--outdir` ouput directory for chapter files (default: `chapters/`
+- `--vtt` optional path to the full-length .vtt transcript file
