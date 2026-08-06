@@ -7,7 +7,7 @@ from mutagen.oggopus import OggOpus
 from mutagen.mp4 import MP4
 from mutagen.id3 import ID3NoHeaderError, ID3, TIT2, TPE1, TCON, TDRC, TRCK, TPOS, TPE2, TCOM, TLAN, GRP1, TALB
 from mutagen import File 
-import os
+import ast
 import sys
 import argparse
 import re
@@ -49,14 +49,28 @@ def parse_arguments():
                                         "to " +
                                         "audio files for music based on their " +
                                         "file name")
-    parser.add_argument("-d", "--download-dir", help="" +
+    parser.add_argument("-d", "--download-dir", default=None, help="" +
                         "Specify the directory with downloaded files." +
                         " Requires full path.")
-    parser.add_argument("-m", "--music-dir", help="" +
+    parser.add_argument("-m", "--music-dir", default=None, help="" +
                         "Specify the directory for the music files." +
                         " Requires full path.")
+    
+    parser.add_argument("-s", "--set", nargs=2, default=None, help="Edit a specific field for a specific file")
+    parser.add_argument("-f", "--file", default=None, help="File to edit specific field")
 
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    group_dirs = args.download_dir is not None or args.music_dir is not None
+    group_set = args.set is not None or args.file is not None
+
+    if group_set and not (args.set is not None and args.file is not None):
+        parser.error(f"--set and --file must be used together")
+
+    if group_dirs and group_set:
+        parser.error(f"--download-dir/--music-dir cannot be combined with --set/--file")
+
+    return args
 
 def find_music_files(start_path='./downloads'):
     music_files = []
@@ -201,17 +215,18 @@ def move_files(metadata: dict, src: pathlib.Path=pathlib.Path("./download"), des
             return
     shutil.move(str(src), str(target_path))
 
-if __name__ == "__main__":
-    args = parse_arguments()
+def run_specific(file, data):
+    metadata = {}
+    value = str(data[1]).strip()
+    if value.startswith("[") and value.endswith("]"):
+        inner = value[1:-1]
+        if inner == "":
+            value = []
+        value = [item.strip() for item in inner.split(",")]
+    metadata[str(data[0])] = value
+    write_music_metadata(pathlib.Path(file), metadata)
 
-    downloads = None
-    music = None
-
-    if args.download_dir:
-        downloads = args.download_dir
-    if args.music_dir:
-        music = pathlib.Path(args.music_dir)
-
+def run_normal(downloads, music):
     if downloads is None:
         music_files = find_music_files()
     else:
@@ -224,6 +239,21 @@ if __name__ == "__main__":
                 move_files(metadata, file)
             else:
                 move_files(metadata, file, music)
+
+if __name__ == "__main__":
+    args = parse_arguments()
+
+    downloads = None
+    music = None
+
+    if args.download_dir:
+        downloads = args.download_dir
+    if args.music_dir:
+        music = pathlib.Path(args.music_dir)
+    if args.set:
+        run_specific(args.file, args.set)
+    else:
+        run_normal(downloads, music)
 
 
 
