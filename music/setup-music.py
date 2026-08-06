@@ -121,6 +121,24 @@ def _write_mp3(file: pathlib.Path, metadata: dict):
         sys.stderr.write(f"Could not save tags for {file}: {e}\n")
         return False
 
+def _write_vorbis(file: pathlib.Path, metadata: dict):
+    audio = File(file)
+    for key, value in metadata.items():
+        if key == "manual":
+            continue
+        data = VORBIS_KEY_MAP.get(key)
+        if data is None:
+            sys.stderr.write(f"Invalid key: {key} for adding metadata\n")
+            continue
+        audio[data] = [value] if not isinstance(value, list) else value
+
+    try:
+        audio.save()
+        return True
+    except Exception as e:
+        sys.stderr.write(f"Could not save tags for {file}: {e}\n")
+        return False
+
 def write_music_metadata(file: pathlib.Path, metadata: dict):
     audio = File(file)
     if audio is None:
@@ -128,6 +146,8 @@ def write_music_metadata(file: pathlib.Path, metadata: dict):
         return False
     if isinstance(audio, MP3):
         return _write_mp3(file, metadata)
+    elif isinstance(audio, (FLAC, OggOpus)):
+        return _write_vorbis
     else:
         sys.stderr.write(f"Unsupported file type: {type(audio).__name__}\n")
         return False
