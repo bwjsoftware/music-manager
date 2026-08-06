@@ -1,20 +1,71 @@
 import shutil
 import mutagen
-from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
-from mutagen.id3 import ID3NoHeaderError
+from mutagen.flac import FLAC
+from mutagen.wave import WAVE
+from mutagen.oggopus import OggOpus
+from mutagen.mp4 import MP4
+from mutagen.id3 import ID3NoHeaderError, ID3, TIT2, TPE1, TCON, TDRC, TDRL, TRCK, TPOS, TPE2, TCOM, TLAN, GRP1, TALB
+from mutagen import File 
 import os
 import sys
 import argparse
 import re
+import pathlib
 
+SUPPORTED_FILE_TYPES = ['mp3', 'opus', 'aac', 'wav', 'flac']
 
-def find_music_files(file_type, start_path='./downloads'):
+# Tuple of (frame id, is multi-value)
+ID3_FRAME_MAP = {
+    "title": (TIT2, False),
+    "artist": (TPE1, True),
+    "album": (TALB, False),
+    "albumartist": (TPE2, True),
+    "composer": (TCOM, True),
+    "genre": (TCON, True),
+    "date": (TDRL, False),
+    "language": (TLAN, True),
+    "grouping": (GRP1, True),
+    "tracknumber": (TRCK, False),
+    "discnumber": (TPOS, False)
+}
+
+VORBIS_KEY_MAP = {
+    "title": "title",
+    "artist": "artist",
+    "album": "album",
+    "albumartist": "albumartist",
+    "composer": "composer",
+    "genre": "genre",
+    "date": "releasedate",
+    "language": "language",
+    "grouping": "grouping",
+    "tracknumber": "tracknumber",
+    "discnumber": "discnumber"
+}
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Parse and edit metadata " +
+                                        "to " +
+                                        "audio files for music based on their " +
+                                        "file name")
+    parser.add_argument("-t", "--type", required=True,
+                        help="Specify the type of " +
+                        "audio file." +
+                        "Ex: mp3, ogg, flac")
+    parser.add_argument("-d", "--download-dir", help="" +
+                        "Specify the directory with downloaded files." +
+                        " Requires full path.")
+    parser.add_argument("-m", "--music-dir", help="" +
+                        "Specify the directory for the music files." +
+                        " Requires full path.")
+
+    return parser.parse_args()
+
+def find_music_files(start_path='./downloads'):
     music_files = []
-    for root, _, files in os.walk(start_path):
-        for file in files:
-            if file.lower().endswith(file_type):
-                music_files.append(os.path.join(root, file))
+    for type in SUPPORTED_FILE_TYPES:
+        music_files.extend(pathlib.Path(start_path).glob(f'*.{type}'))
     return music_files
 
 
@@ -25,49 +76,61 @@ def get_music_metadata(file):
         artist = audio.get('artist', ['Unknown Artist'])
         album = audio.get('album', ['Unknown Album'])[0]
         genres = audio.get('genre', ['Unknown Genre'])
+        language = audio.get('language', [])
+        date = audio.get('date', [])
 
         return {
-                "title": title,
-                "artists": artist,
-                "album": album,
-                "genres": genres
+            "title": title,
+            "artists": artist,
+            "album": album,
+            "genres": genres,
+            "language": language,
+            "date": date
         }
 
+def _write_id3_tag(tags: ID3, metadata: dict):
+    for key, value in metadata.items():
+        if key == "manual":
+            continue
+        data = ID3_FRAME_MAP.get(key)
+        if data is None:
+            sys.stderr.write(f"Invalid key: {key} for adding metadata\n")
+            continue
+        frame, multi_value = data
+        values = value
+        if not isinstance(value, list):
+            values = [value]
+        if not multi_value:
+            values = [values[0]]
+        tags[frame.__name__] = frame(encoding=3, text=value)
 
-def write_music_metadata(file, metadata: dict):
-    audio = None
+def _write_mp3(file: pathlib.Path, metadata: dict):
     try:
-        audio = EasyID3(file)
-    except ID3NoHeaderError:
-        new_file = MP3(file)
-        new_file.add_tags()
-        new_file.save()
-        audio = EasyID3(file)
+        audio = MP3(file)
+        if audio.tags is None:
+            audio.add_tags()
     except Exception as e:
         sys.stderr.write(f"Error: {e}")
-
-    if not isinstance(audio, EasyID3):
-        sys.stderr.write("Unsupported file type")
         return False
-
-    for key, value in metadata.items():
-        if not isinstance(value, list):
-            value = [value]
-        if key in EasyID3.valid_keys.keys():
-            audio[key] = value
-        elif key == 'manual':
-            pass
-        else:
-            sys.stderr.write(f"Invalid key: {key} For Writing File")
+    _write_id3_tag(audio.tags, metadata)
 
     try:
         audio.save()
         return True
     except Exception as e:
-        sys.stderr.write(f"Could not save tags for {file}: {e}")
+        sys.stderr.write(f"Could not save tags for {file}: {e}\n")
         return False
 
-
+def write_music_metadata(file: pathlib.Path, metadata: dict):
+    audio = File(file)
+    if audio is None:
+        sys.stderr.write(f"Unrecongized or corrupt file\n")
+        return False
+    if isinstance(audio, MP3):
+        return _write_mp3(file, metadata)
+    else:
+        sys.stderr.write(f"Unsupported file type: {type(audio).__name__}\n")
+        return False
 def decode_file_name(s: str) -> dict:
     result = {}
 
@@ -88,13 +151,11 @@ def decode_file_name(s: str) -> dict:
 
     return result
 
-
 def parse_file_name(file):
     file_name_parts = file.split("/")
     file_type = file_name_parts[-1].split(".")[-1]
     decoded_file_name = decode_file_name(file_name_parts[-1])
     return decoded_file_name
-
 
 def move_files(metadata: dict, src="./download", dest="./music"):
     dest += "/"
@@ -123,24 +184,8 @@ def move_files(metadata: dict, src="./download", dest="./music"):
             return
     shutil.move(src, dest)
 
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Parse and edit metadata " +
-                                     "to " +
-                                     "audio files for music based on their " +
-                                     "file name")
-    parser.add_argument("-t", "--type", required=True,
-                        help="Specify the type of " +
-                        "audio file." +
-                        "Ex: mp3, ogg, flac")
-    parser.add_argument("-d", "--download-dir", help="" +
-                        "Specify the directory with downloaded files." +
-                        " Requires full path.")
-    parser.add_argument("-m", "--music-dir", help="" +
-                        "Specify the directory for the music files." +
-                        " Requires full path.")
-
-    args = parser.parse_args()
+    args = parse_arguments()
 
     music_type = None
     downloads = None
