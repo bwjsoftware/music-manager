@@ -5,7 +5,7 @@ from mutagen.flac import FLAC
 from mutagen.wave import WAVE
 from mutagen.oggopus import OggOpus
 from mutagen.mp4 import MP4
-from mutagen.id3 import ID3NoHeaderError, ID3, TIT2, TPE1, TCON, TDRC, TDRL, TRCK, TPOS, TPE2, TCOM, TLAN, GRP1, TALB
+from mutagen.id3 import ID3NoHeaderError, ID3, TIT2, TPE1, TCON, TDRC, TRCK, TPOS, TPE2, TCOM, TLAN, GRP1, TALB
 from mutagen import File 
 import os
 import sys
@@ -23,7 +23,7 @@ ID3_FRAME_MAP = {
     "albumartist": (TPE2, True),
     "composer": (TCOM, True),
     "genre": (TCON, True),
-    "date": (TDRL, False),
+    "date": (TDRC, False),
     "language": (TLAN, True),
     "grouping": (GRP1, True),
     "tracknumber": (TRCK, False),
@@ -49,10 +49,6 @@ def parse_arguments():
                                         "to " +
                                         "audio files for music based on their " +
                                         "file name")
-    parser.add_argument("-t", "--type", required=True,
-                        help="Specify the type of " +
-                        "audio file." +
-                        "Ex: mp3, ogg, flac")
     parser.add_argument("-d", "--download-dir", help="" +
                         "Specify the directory with downloaded files." +
                         " Requires full path.")
@@ -171,63 +167,63 @@ def decode_file_name(s: str) -> dict:
 
     return result
 
-def parse_file_name(file):
-    file_name_parts = file.split("/")
-    file_type = file_name_parts[-1].split(".")[-1]
-    decoded_file_name = decode_file_name(file_name_parts[-1])
+def parse_file_name(file: pathlib.Path):
+    file_name = file.name
+    decoded_file_name = decode_file_name(file_name)
     return decoded_file_name
 
-def move_files(metadata: dict, src="./download", dest="./music"):
-    dest += "/"
+def move_files(metadata: dict, src: pathlib.Path=pathlib.Path("./download"), dest=pathlib.Path("./music")):
     if metadata.get('manual') == 'true':
-        dest += input(f'File: {src}\nPlease give relative path starting from the music directory (Do NOT include the file name but do include ending "/"):')
-        dest += str(metadata['title'])
+        file_name = input(f'File: {src}\nPlease give relative path starting from the music directory (Do NOT include the file name but do include ending "/"):')
+        target_dir = dest / file_name
     else:
-        if isinstance(metadata['artist'], list):
-            metadata['artist'] = metadata['artist'][0]
-
-        if metadata['artist'] == metadata['album']:
-            dest += str(metadata['artist'] + "/" +
-                        metadata['title'])
+        if 'albumartist' in metadata:
+            artist = str(metadata['albumartist'])
+        elif isinstance(metadata['artist'], list):
+            artist = str(metadata['artist'][0])
         else:
-            dest += str(metadata['artist'] + "/" + metadata['album'] + "/" +
-                        metadata['title'])
-    dest += ".mp3"
+            artist = str(metadata['artist'])
 
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
+        album = str(metadata['album'])
+        if artist == album:
+            target_dir = dest / artist
+        else:
+            target_dir = dest / artist / album
 
-    if os.path.exists(dest):
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path = (target_dir / str(metadata['title'])).with_suffix(src.suffix)
+
+    if target_path.exists():
         choice = input(f"File {dest} already exists\nReplace? [y/N]: ").strip().lower()
         if choice in ("y", "yes"):
-            os.remove(dest)
+            target_path.unlink()
         else:
             return
-    shutil.move(src, dest)
+    shutil.move(str(src), str(target_path))
 
 if __name__ == "__main__":
     args = parse_arguments()
 
-    music_type = None
     downloads = None
     music = None
 
-    if args.type:
-        music_type = f".{args.type}"
     if args.download_dir:
         downloads = args.download_dir
     if args.music_dir:
-        music = args.music_dir
+        music = pathlib.Path(args.music_dir)
 
     if downloads is None:
-        music_files = find_music_files(music_type)
+        music_files = find_music_files()
     else:
-        music_files = find_music_files(music_type, downloads)
+        music_files = find_music_files(downloads)
 
-    for i in range(len(music_files)):
-        file = music_files[i]
+    for file in music_files:
         metadata = parse_file_name(file)
         if write_music_metadata(file, metadata):
-            move_files(metadata, file, music)
+            if music is None:
+                move_files(metadata, file)
+            else:
+                move_files(metadata, file, music)
 
 
 
