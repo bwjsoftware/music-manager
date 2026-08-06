@@ -38,7 +38,7 @@ If a downloads and/or music directory are given they must be absolute paths.
 
 # Audiobooks #
 
-## Disclaimer most of the python scripts have been written with claude code ##
+## Disclaimer: The python scripts below were made with the help of Claude Code ##
 
 ## Usage ##
 ### Finding Chapters ###

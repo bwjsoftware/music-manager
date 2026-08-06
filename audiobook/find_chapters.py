@@ -145,6 +145,72 @@ def sanitize_title(text, max_len=50):
     return text or '<title>'
 
 
+def run_window_mode(args):
+    """
+    Divide the file into `args.num_chapters` roughly equal windows and, for
+    each boundary between consecutive expected chapters, find the single
+    longest silence within a window centered on that expected boundary.
+    This is far more robust than a global --min-duration threshold when
+    chapter-break pauses aren't reliably longer than ordinary mid-chapter
+    pauses (e.g. a narrator who doesn't leave a distinctly long gap).
+    """
+    total_duration = get_audio_duration(args.audio)
+    avg_len = total_duration / args.num_chapters
+    tolerance = args.window_tolerance if args.window_tolerance else avg_len * 0.4
+
+    entries = load_vtt_entries(args.vtt) if args.vtt else None
+
+    print(f"Average expected chapter length: {format_duration(avg_len)} "
+          f"({args.num_chapters} chapters over {format_duration(total_duration)})", file=sys.stderr)
+    print(f"Searching a +/-{format_duration(tolerance)} window around each expected "
+          f"boundary for the single longest pause...\n", file=sys.stderr)
+
+    results = []  # (chapter_num, start, end, dur, window_lo, window_hi) or None if nothing found
+    for c in range(2, args.num_chapters + 1):
+        expected = (c - 1) * avg_len
+        lo = max(0.0, expected - tolerance)
+        hi = min(total_duration, expected + tolerance)
+        candidates = find_silences(args.audio, min_duration=args.min_duration, noise=args.noise, start=lo, end=hi)
+        if candidates:
+            best = max(candidates, key=lambda x: x[2])
+        else:
+            best = None
+        results.append((c, expected, lo, hi, best))
+
+    print(f"{'Ch':<4}{'Expected':<12}{'Best split found':<18}{'Dur':<7}Context")
+    print('-' * 100)
+    prev_start = 0.0
+    for c, expected, lo, hi, best in results:
+        if best is None:
+            print(f"{c:<4}{hhmmss(expected):<12} {'NO SILENCE FOUND':<18}"
+                  f"(try --window-tolerance wider, or lower the implicit min-duration)")
+            continue
+        s, e, dur = best
+        mid = (s + e) / 2
+        flag = ''
+        if abs(mid - expected) > tolerance * 0.85:
+            flag = '  <- near window edge, double-check neighbor chapter didn\'t eat this one'
+        ctx = context_after(entries, mid, args.context_words) if entries else ''
+        print(f"{c:<4}{hhmmss(expected):<12} {hhmmss(mid):<18} {dur:>5.2f}s  {ctx} {flag}")
+        prev_start = mid
+
+    if args.output:
+        with open(args.output, 'w', encoding='utf-8') as f:
+            f.write(f"00:00:00.000\t{context_after(entries, 0.0, args.context_words) if entries else '<title>'}\n")
+            for c, expected, lo, hi, best in results:
+                if best is None:
+                    f.write(f"# Chapter {c}: NO SILENCE FOUND in window "
+                            f"[{hhmmss(lo)} - {hhmmss(hi)}] -- fill in manually\n")
+                    continue
+                s, e, dur = best
+                mid = (s + e) / 2
+                title = sanitize_title(context_after(entries, mid, args.context_words)) if entries else '<title>'
+                f.write(f"{hhmmss(mid)}\t{title}\n")
+        print(f"\nWrote candidates to {args.output}. Review carefully -- window mode picks the "
+              "longest pause in each expected range, which can be wrong if a chapter runs much "
+              "shorter/longer than average. Check the 'near window edge' warnings above first.")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='Find candidate chapter-break points via silence detection, '
@@ -170,10 +236,25 @@ def main():
                          'timestamp<TAB>title) ready for split_audiobook.py. Always written '
                          'in chronological order, including an entry at 00:00:00.000 for the '
                          'start of the book.')
+    parser.add_argument('--num-chapters', type=int, help='Instead of a single global '
+                         'min-duration threshold, divide the file into this many roughly '
+                         'equal-length windows and report the single longest silence found '
+                         'in each. Use this when chapter-break pauses aren\'t consistently '
+                         'longer than ordinary paragraph pauses (so no global --min-duration '
+                         'cleanly separates them) -- common with narrators/recordings that '
+                         'don\'t leave a distinctly long gap between chapters.')
+    parser.add_argument('--window-tolerance', type=float, help='Half-width in seconds of each '
+                         'search window in --num-chapters mode (default: 40%% of the average '
+                         'expected chapter length). Increase if real chapters vary a lot in '
+                         'length; decrease if adjacent windows are finding the same silence.')
     args = parser.parse_args()
 
     if args.end and not args.start:
         parser.error('--end requires --start')
+
+    if args.num_chapters:
+        run_window_mode(args)
+        return
 
     start = parse_timestamp(args.start) if args.start else None
     end = parse_timestamp(args.end) if args.end else None
