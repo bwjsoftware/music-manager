@@ -1,5 +1,5 @@
 import argparse
-import parser
+import editor
 
 def parse_arguments():
     pass
