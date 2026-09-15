@@ -15,34 +15,19 @@ import pathlib
 
 SUPPORTED_FILE_TYPES = ['mp3', 'opus', 'aac', 'wav', 'flac']
 
-# Tuple of (frame id, is multi-value)
-ID3_FRAME_MAP = {
-    "title": (TIT2, False),
-    "artist": (TPE1, True),
-    "album": (TALB, False),
-    "albumartist": (TPE2, True),
-    "composer": (TCOM, True),
-    "genre": (TCON, True),
-    "date": (TDRC, False),
-    "language": (TLAN, True),
-    "grouping": (GRP1, True),
-    "tracknumber": (TRCK, False),
-    "discnumber": (TPOS, False)
-}
-
-VORBIS_KEY_MAP = {
-    "title": "title",
-    "artist": "artist",
-    "album": "album",
-    "albumartist": "albumartist",
-    "composer": "composer",
-    "genre": "genre",
-    "date": "releasedate",
-    "language": "language",
-    "grouping": "grouping",
-    "tracknumber": "tracknumber",
-    "discnumber": "discnumber"
-}
+KEY_MAP = {
+        "title": {"Vorbis": "title", "ID3": (TIT2, False)},
+        "artist": {"Vorbis": "artist", "ID3": (TPE1, True)},
+        "album": {"Vorbis": "album", "ID3": (TALB, False)},
+        "albumartist": {"Vorbis": "albumartist", "ID3": (TPE2, True)},
+        "composer": {"Vorbis": "composer", "ID3": (TCOM, True)},
+        "genre": {"Vorbis": "genre", "ID3": (TCON, True)},
+        "date": {"Vorbis": "releasedate", "ID3": (TDRC, False)},
+        "language": {"Vorbis": "language", "ID3": (TLAN, True)},
+        "grouping": {"Vorbis": "grouping", "ID3": (GRP1, True)},
+        "tracknmber": {"Vorbis": "tracknumber", "ID3": (TRCK, False)},
+        "discnumber": {"Vorbis": "discnumber", "ID3": (TPOS, False)}
+        }
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Parse and edit metadata " +
@@ -102,7 +87,7 @@ def _write_id3_tag(tags: ID3, metadata: dict):
     for key, value in metadata.items():
         if key == "manual":
             continue
-        data = ID3_FRAME_MAP.get(key)
+        data = KEY_MAP["ID3"][key]
         if data is None:
             sys.stderr.write(f"Invalid key: {key} for adding metadata\n")
             continue
@@ -136,7 +121,7 @@ def _write_vorbis(file: pathlib.Path, metadata: dict):
     for key, value in metadata.items():
         if key == "manual":
             continue
-        data = VORBIS_KEY_MAP.get(key)
+        data = KEY_MAP["Vorbis"][key]
         if data is None:
             sys.stderr.write(f"Invalid key: {key} for adding metadata\n")
             continue

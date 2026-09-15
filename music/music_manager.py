@@ -2,7 +2,7 @@ import argparse
 import pathlib
 import requests
 from urllib.parse import urlparse
-from editor import VORBIS_KEY_MAP
+from editor import KEY_MAP
 
 def parse_arguments():
     parser = argparse.ArgumentParser(prog="Music Manager",
@@ -27,7 +27,7 @@ def parse_arguments():
     download_exlusive.add_argument("-f", "--file", type=pathlib.Path, default=None, help="Path to json/csv file to batch download links")
     download_exlusive.add_argument("-l", "--link", type=str, default=None, help="Link to audio to download")
 
-    for arg in VORBIS_KEY_MAP.keys():
+    for arg in KEY_MAP.keys():
         download.add_argument(f"--{arg}", default=None, help=f"Override/Manually set the {arg} metadata field")
     
     return parser.parse_args()
