@@ -1,7 +1,10 @@
 import argparse
 import pathlib
-import requests
 from urllib.parse import urlparse
+import json
+from csv import DictReader
+
+from download import get_formats, sort_formats
 from editor import KEY_MAP
 
 def parse_arguments():
@@ -27,16 +30,35 @@ def parse_arguments():
     download_exlusive.add_argument("-f", "--file", type=pathlib.Path, default=None, help="Path to json/csv file to batch download links")
     download_exlusive.add_argument("-l", "--link", type=str, default=None, help="Link to audio to download")
 
-    download.add_argument("--manual-path", type=pathlib.Path, help="Manually specified path where the music file should be placed in the library. By default files will be placed in a folder structure like 'artist/album/file.mp3'"
+    download.add_argument("--manual-path", type=pathlib.Path, help="Manually specified path where the music file should be placed in the library. By default files will be placed in a folder structure like 'artist/album/file.mp3'")
 
     for arg in KEY_MAP.keys():
         download.add_argument(f"--{arg}", default=None, help=f"Override/Manually set the {arg} metadata field")
     
     return parser.parse_args()
 
+
+def read_file(batch_file: pathlib.Path):
+    if not batch_file.is_dir():
+        if batch_file.suffix == ".json":
+            with open(batch_file, "r") as f:
+                return json.load(f)
+        elif batch_file.suffix == ".csv":
+            with open(batch_file, "r") as f:
+                return list(DictReader(f))
+
+
 def main():
     args = parse_arguments()
     print(args)
+
+    if args.file is not None:
+        data = read_file(args.file)
+        print(data)
+
+    if args.link is not None:
+        data = get_formats(args.link)
+        sort_formats(data)
 
 if __name__ == "__main__":
     main()
