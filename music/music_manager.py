@@ -1,5 +1,7 @@
 import argparse
 import pathlib
+import requests
+from urllib.parse import urlparse
 from editor import VORBIS_KEY_MAP
 
 def parse_arguments():
@@ -20,6 +22,10 @@ def parse_arguments():
     download.add_argument("-d", "--download_dir", type=pathlib.Path, 
                           help="Path to download directory. This is almost always used as a temp directory before the file is moved to its organized folder. If nothing is given the download directory is assumed to be .")
     download.add_argument("--no-metadata", action="store_true", help="Download and organize music without getting metadata")
+    
+    download_exlusive = download.add_mutually_exclusive_group()
+    download_exlusive.add_argument("-f", "--file", type=pathlib.Path, default=None, help="Path to json/csv file to batch download links")
+    download_exlusive.add_argument("-l", "--link", type=str, default=None, help="Link to audio to download")
 
     for arg in VORBIS_KEY_MAP.keys():
         download.add_argument(f"--{arg}", default=None, help=f"Override/Manually set the {arg} metadata field")
