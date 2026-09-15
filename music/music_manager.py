@@ -18,14 +18,16 @@ def parse_arguments():
 
     download = subparser.add_parser("get", 
                                     help="Downloads music file using 'yt-dlp' and sorts into library. Metadata can be automatically optained from MusicBrainz if --title and --artist are given. The search can be narrowed down more if other keys are given (Not all keys are used for MusicBrainz api search).")
-    download.add_argument("-m", "--music_dir", type=pathlib.Path, help="Path of music directory. If nothing is given the music directory is assumed to be .")
-    download.add_argument("-d", "--download_dir", type=pathlib.Path, 
+    download.add_argument("-m", "--music-dir", type=pathlib.Path, help="Path of music directory. If nothing is given the music directory is assumed to be .")
+    download.add_argument("-d", "--download-dir", type=pathlib.Path, 
                           help="Path to download directory. This is almost always used as a temp directory before the file is moved to its organized folder. If nothing is given the download directory is assumed to be .")
     download.add_argument("--no-metadata", action="store_true", help="Download and organize music without getting metadata")
     
     download_exlusive = download.add_mutually_exclusive_group()
     download_exlusive.add_argument("-f", "--file", type=pathlib.Path, default=None, help="Path to json/csv file to batch download links")
     download_exlusive.add_argument("-l", "--link", type=str, default=None, help="Link to audio to download")
+
+    download.add_argument("--manual-path", type=pathlib.Path, help="Manually specified path where the music file should be placed in the library. By default files will be placed in a folder structure like 'artist/album/file.mp3'"
 
     for arg in KEY_MAP.keys():
         download.add_argument(f"--{arg}", default=None, help=f"Override/Manually set the {arg} metadata field")
