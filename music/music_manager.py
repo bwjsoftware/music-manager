@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import json
 from csv import DictReader
 
-from download import get_formats, sort_formats
+import download as dl
 from editor import KEY_MAP
 
 def parse_arguments():
@@ -31,6 +31,8 @@ def parse_arguments():
     download_exlusive.add_argument("-l", "--link", type=str, default=None, help="Link to audio to download")
 
     download.add_argument("--manual-path", type=pathlib.Path, help="Manually specified path where the music file should be placed in the library. By default files will be placed in a folder structure like 'artist/album/file.mp3'")
+    download.add_argument("--max-bitrate", type=int, default=-1, help="Cap the maximum bitrate for audio. Ex: 192 for 192k in opus or for 192 kpbs in mp3.")
+    download.add_argument("--codec", type=str, default="opus", help="Specifiy the prefered container type. Ex: mp3, opus, flac. opus is the default if not specified. If an option is not availble when downloading the music clip will be downloaded with the highest available quality from any container type and then converted to the prefered container type.")
 
     for arg in KEY_MAP.keys():
         download.add_argument(f"--{arg}", default=None, help=f"Override/Manually set the {arg} metadata field")
@@ -48,6 +50,17 @@ def read_file(batch_file: pathlib.Path):
                 return list(DictReader(f))
 
 
+def download_music(links: list, max_bitrate: int = -1, extention: str = "opus"):
+    downloaded_files = dict()
+
+    for link in links:
+        format_data = dl.get_formats(link)
+        download_candidate = dl.find_download_candidate(format_data, max_bitrate, extention)
+        downloaded_file = dl.download_file(download_candidate)
+        if downloaded_file not in downloaded_files:
+            downloaded_files[downloaded_file] = {}
+
+
 def main():
     args = parse_arguments()
     print(args)
@@ -57,8 +70,8 @@ def main():
         print(data)
 
     if args.link is not None:
-        data = get_formats(args.link)
-        sort_formats(data)
+        download_music([args.link], args.max_bitrate, args.codec)
+
 
 if __name__ == "__main__":
     main()
