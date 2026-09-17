@@ -1,9 +1,9 @@
 from yt_dlp import YoutubeDL
-import uuid
+import pathlib
 
-def get_formats(url: str):
+def get_formats(url: str, opts: dict):
     try:
-        with YoutubeDL() as ytdl:
+        with YoutubeDL({"quiet": True, "no_warnings": False}) as ytdl:
             info = ytdl.extract_info(url, download=False)
             return info.get("formats", [])
     except Exception as e:
@@ -26,5 +26,13 @@ def find_download_candidate(fmts: list, max_bitrate: int = -1, extention: str = 
     return fmts[-1]
 
 
-def download_file(candidate: dict):
-    pass
+def download_file(url: str, id: str, opts: dict):
+    per_opts = opts
+    per_opts['format'] = id
+    try:
+        with YoutubeDL(per_opts) as ytdl:
+            info = ytdl.extract_info(url, download=True)
+            path = ytdl.prepare_filename(info)
+        return path
+    except Exception as e:
+        print(e)

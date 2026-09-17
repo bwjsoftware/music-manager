@@ -1,6 +1,7 @@
 import argparse
 import pathlib
 from urllib.parse import urlparse
+import uuid
 import json
 from csv import DictReader
 
@@ -21,8 +22,8 @@ def parse_arguments():
 
     download = subparser.add_parser("get", 
                                     help="Downloads music file using 'yt-dlp' and sorts into library. Metadata can be automatically optained from MusicBrainz if --title and --artist are given. The search can be narrowed down more if other keys are given (Not all keys are used for MusicBrainz api search).")
-    download.add_argument("-m", "--music-dir", type=pathlib.Path, help="Path of music directory. If nothing is given the music directory is assumed to be .")
-    download.add_argument("-d", "--download-dir", type=pathlib.Path, 
+    download.add_argument("-m", "--music-dir", type=pathlib.Path, default=pathlib.Path("."), help="Path of music directory. If nothing is given the music directory is assumed to be .")
+    download.add_argument("-d", "--download-dir", type=pathlib.Path, default=pathlib.Path("."),
                           help="Path to download directory. This is almost always used as a temp directory before the file is moved to its organized folder. If nothing is given the download directory is assumed to be .")
     download.add_argument("--no-metadata", action="store_true", help="Download and organize music without getting metadata")
     
@@ -50,15 +51,22 @@ def read_file(batch_file: pathlib.Path):
                 return list(DictReader(f))
 
 
-def download_music(links: list, max_bitrate: int = -1, extention: str = "opus"):
+def download_music(links: list, max_bitrate: int = -1, extention: str = "opus", dir: pathlib.Path = pathlib.Path(".")):
     downloaded_files = dict()
 
     for link in links:
-        format_data = dl.get_formats(link)
+        file_id = uuid.uuid4()
+        opts = {
+            "quiet": False,
+            "no_warnings": False,
+            "outtmpl": str(dir) + f"/{file_id}.%(ext)s",
+            }
+        format_data = dl.get_formats(link, opts)
         download_candidate = dl.find_download_candidate(format_data, max_bitrate, extention)
-        downloaded_file = dl.download_file(download_candidate)
+        downloaded_file = dl.download_file(link, download_candidate["format_id"], opts)
         if downloaded_file not in downloaded_files:
-            downloaded_files[downloaded_file] = {}
+            downloaded_files[file_id] = {"path": downloaded_file}
+        print(downloaded_files)
 
 
 def main():
@@ -70,7 +78,7 @@ def main():
         print(data)
 
     if args.link is not None:
-        download_music([args.link], args.max_bitrate, args.codec)
+        download_music([args.link], args.max_bitrate, args.codec, args.download_dir)
 
 
 if __name__ == "__main__":
