@@ -57,16 +57,17 @@ def download_music(links: list, max_bitrate: int = -1, extention: str = "opus", 
     for link in links:
         file_id = uuid.uuid4()
         opts = {
-            "quiet": False,
+            "quiet": True,
             "no_warnings": False,
-            "outtmpl": str(dir) + f"/{file_id}.%(ext)s",
             }
         format_data = dl.get_formats(link, opts)
+        opts["outtmpl"] = str(dir) + f"/{file_id}.%(ext)s"
         download_candidate = dl.find_download_candidate(format_data, max_bitrate, extention)
-        downloaded_file = dl.download_file(link, download_candidate["format_id"], opts)
+        opts["format"] = download_candidate["format_id"]
+        downloaded_file = dl.download_file(link, opts, extention)
         if downloaded_file not in downloaded_files:
             downloaded_files[file_id] = {"path": downloaded_file}
-        print(downloaded_files)
+    print(downloaded_files)
 
 
 def main():

@@ -1,9 +1,11 @@
 from yt_dlp import YoutubeDL
+import os
 import pathlib
+import subprocess
 
 def get_formats(url: str, opts: dict):
     try:
-        with YoutubeDL({"quiet": True, "no_warnings": False}) as ytdl:
+        with YoutubeDL(opts) as ytdl:
             info = ytdl.extract_info(url, download=False)
             return info.get("formats", [])
     except Exception as e:
@@ -26,13 +28,19 @@ def find_download_candidate(fmts: list, max_bitrate: int = -1, extention: str = 
     return fmts[-1]
 
 
-def download_file(url: str, id: str, opts: dict):
-    per_opts = opts
-    per_opts['format'] = id
+def download_file(url: str, opts: dict, extention: str):
     try:
-        with YoutubeDL(per_opts) as ytdl:
+        with YoutubeDL(opts) as ytdl:
             info = ytdl.extract_info(url, download=True)
-            path = ytdl.prepare_filename(info)
-        return path
+            path = pathlib.Path(ytdl.prepare_filename(info))
+
+        # Post Process to extract from container
+        extracted_path = path.with_suffix(f".{extention}")
+        extract_cmd = ["ffmpeg", "-i", str(path), "-c:a", "copy", "-vn", str(extracted_path)]
+
+        subprocess.run(extract_cmd, check=True, capture_output=True)
+        path.unlink()
+
+        return extracted_path
     except Exception as e:
         print(e)
