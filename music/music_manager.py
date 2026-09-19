@@ -6,7 +6,7 @@ import json
 from csv import DictReader
 
 import download as dl
-from editor import KEY_MAP
+import editor as edt
 
 def parse_arguments():
     parser = argparse.ArgumentParser(prog="Music Manager",
@@ -25,7 +25,7 @@ def parse_arguments():
     download.add_argument("-m", "--music-dir", type=pathlib.Path, default=pathlib.Path("."), help="Path of music directory. If nothing is given the music directory is assumed to be .")
     download.add_argument("-d", "--download-dir", type=pathlib.Path, default=pathlib.Path("."),
                           help="Path to download directory. This is almost always used as a temp directory before the file is moved to its organized folder. If nothing is given the download directory is assumed to be .")
-    download.add_argument("--no-metadata", action="store_true", help="Download and organize music without getting metadata")
+    download.add_argument("--skip-musicbrainz", action="store_true", help="Download and organize music without getting metadata from musicbrainz")
     
     download_exlusive = download.add_mutually_exclusive_group()
     download_exlusive.add_argument("-f", "--file", type=pathlib.Path, default=None, help="Path to json/csv file to batch download links")
@@ -35,7 +35,7 @@ def parse_arguments():
     download.add_argument("--max-bitrate", type=int, default=-1, help="Cap the maximum bitrate for audio. Ex: 192 for 192k in opus or for 192 kpbs in mp3.")
     download.add_argument("--codec", type=str, default="opus", help="Specifiy the prefered container type. Ex: mp3, opus, flac. opus is the default if not specified. If an option is not availble when downloading the music clip will be downloaded with the highest available quality from any container type and then converted to the prefered container type.")
 
-    for arg in KEY_MAP.keys():
+    for arg in edt.KEY_MAP.keys():
         download.add_argument(f"--{arg}", default=None, help=f"Override/Manually set the {arg} metadata field")
     
     return parser.parse_args()
@@ -51,23 +51,21 @@ def read_file(batch_file: pathlib.Path):
                 return list(DictReader(f))
 
 
-def download_music(links: list, max_bitrate: int = -1, extention: str = "opus", dir: pathlib.Path = pathlib.Path(".")):
+def download_music(link: str, file_id: str, max_bitrate: int = -1, extention: str = "opus", dir: pathlib.Path = pathlib.Path(".")):
     downloaded_files = dict()
 
-    for link in links:
-        file_id = uuid.uuid4()
-        opts = {
-            "quiet": True,
-            "no_warnings": False,
-            }
-        format_data = dl.get_formats(link, opts)
-        opts["outtmpl"] = str(dir) + f"/{file_id}.%(ext)s"
-        download_candidate = dl.find_download_candidate(format_data, max_bitrate, extention)
-        opts["format"] = download_candidate["format_id"]
-        downloaded_file = dl.download_file(link, opts, extention)
-        if downloaded_file not in downloaded_files:
-            downloaded_files[file_id] = {"path": downloaded_file}
-    print(downloaded_files)
+    opts = {
+        "quiet": True,
+        "no_warnings": False,
+        }
+    format_data = dl.get_formats(link, opts)
+    opts["outtmpl"] = str(dir) + f"/{file_id}.%(ext)s"
+    download_candidate = dl.find_download_candidate(format_data, max_bitrate, extention)
+    opts["format"] = download_candidate["format_id"]
+    downloaded_file = dl.download_file(link, opts, extention)
+    if downloaded_file not in downloaded_files:
+        downloaded_files[file_id] = {"path": downloaded_file}
+    return downloaded_files
 
 
 def main():
@@ -79,7 +77,13 @@ def main():
         print(data)
 
     if args.link is not None:
-        download_music([args.link], args.max_bitrate, args.codec, args.download_dir)
+        downloaded_file = download_music(args.link, str(uuid.uuid4()), args.max_bitrate, args.codec, args.download_dir)
+
+        for key in edt.KEY_MAP.keys():
+            arguments = vars(args)
+            if key not in downloaded_file:
+                downloaded_file[key] = arguments[key]
+        print(downloaded_file)
 
 
 if __name__ == "__main__":

@@ -13,8 +13,8 @@ def get_formats(url: str, opts: dict):
 
 
 def sort_formats(fmts: list):
-    audio_only_fmts = [fmt for fmt in fmts if fmt.get("vcodec") == "none" and fmt.get("acodec") != "none" and fmt.get("abr") is not None]
-    original_audio_fmts = [fmt for fmt in audio_only_fmts if "original" in fmt.get("format_note")]
+    audio_only_fmts = [fmt for fmt in fmts if fmt.get("vcodec") == "none" and fmt.get("acodec") != "none" and fmt.get("abr") is not None and "drc" not in fmt.get("format_id")]
+    original_audio_fmts = [fmt for fmt in audio_only_fmts if "original" in fmt.get("format_note") or "dubbed" not in fmt.get("format_note")]
     sorted_audio = sorted(original_audio_fmts, key=lambda x: float(x.get("abr")))
     return sorted_audio
 
@@ -24,8 +24,7 @@ def find_download_candidate(fmts: list, max_bitrate: int = -1, extention: str = 
         fmts = [fmt for fmt in fmts if float(fmt.get("abr")) <= max_bitrate]
 
     fmts = [fmt for fmt in fmts if extention in fmt.get("acodec")]
-
-    return fmts[-1]
+    return fmts[-1] if len(fmts) > 0 else {}
 
 
 def download_file(url: str, opts: dict, extention: str):
