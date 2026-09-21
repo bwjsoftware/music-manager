@@ -87,6 +87,8 @@ def _write_id3_tag(tags: ID3, metadata: dict):
     for key, value in metadata.items():
         if key == "manual":
             continue
+        if value is None:
+            continue
         data = KEY_MAP["ID3"][key]
         if data is None:
             sys.stderr.write(f"Invalid key: {key} for adding metadata\n")
@@ -120,6 +122,8 @@ def _write_vorbis(file: pathlib.Path, metadata: dict):
     audio = File(file)
     for key, value in metadata.items():
         if key == "manual":
+            continue
+        if value is None:
             continue
         data = KEY_MAP["Vorbis"][key]
         if data is None:

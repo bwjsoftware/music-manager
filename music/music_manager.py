@@ -52,8 +52,6 @@ def read_file(batch_file: pathlib.Path):
 
 
 def download_music(link: str, file_id: str, max_bitrate: int = -1, extention: str = "opus", dir: pathlib.Path = pathlib.Path(".")):
-    downloaded_files = dict()
-
     opts = {
         "quiet": True,
         "no_warnings": False,
@@ -63,9 +61,7 @@ def download_music(link: str, file_id: str, max_bitrate: int = -1, extention: st
     download_candidate = dl.find_download_candidate(format_data, max_bitrate, extention)
     opts["format"] = download_candidate["format_id"]
     downloaded_file = dl.download_file(link, opts, extention)
-    if downloaded_file not in downloaded_files:
-        downloaded_files[file_id] = {"path": downloaded_file}
-    return downloaded_files
+    return downloaded_file
 
 
 def main():
@@ -77,14 +73,17 @@ def main():
         print(data)
 
     if args.link is not None:
-        downloaded_file = download_music(args.link, str(uuid.uuid4()), args.max_bitrate, args.codec, args.download_dir)
-
-        for key in edt.KEY_MAP.keys():
-            arguments = vars(args)
-            if key not in downloaded_file:
-                downloaded_file[key] = arguments[key]
+        files = {uuid.uuid4(): {"path": "", "metadata": {}}}
+        downloaded_file = download_music(args.link, str(list(files.keys())[0]), args.max_bitrate, args.codec, args.download_dir)
+        
+        for key in files.keys():
+            for key in edt.KEY_MAP.keys():
+                arguments = vars(args)
+                if key not in files[key]["metadata"]:
+                    downloaded_file["metadata"][key] = arguments[key]
         print(downloaded_file)
-
+        edt.write_music_metadata(list(downloaded_file.values())[0]["path"], list(downloaded_file.values())[0]["metadata"])
+        
 
 if __name__ == "__main__":
     main()
