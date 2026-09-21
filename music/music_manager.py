@@ -73,16 +73,15 @@ def main():
         print(data)
 
     if args.link is not None:
-        files = {uuid.uuid4(): {"path": "", "metadata": {}}}
-        downloaded_file = download_music(args.link, str(list(files.keys())[0]), args.max_bitrate, args.codec, args.download_dir)
+        downloaded_file = download_music(args.link, str(uuid.uuid4()), args.max_bitrate, args.codec, args.download_dir)
         
-        for key in files.keys():
-            for key in edt.KEY_MAP.keys():
-                arguments = vars(args)
-                if key not in files[key]["metadata"]:
-                    downloaded_file["metadata"][key] = arguments[key]
+        metadata = {}
+        arguments = vars(args)
+        for key in edt.KEY_MAP.keys():
+            if key not in metadata:
+                metadata[key] = arguments[key]
         print(downloaded_file)
-        edt.write_music_metadata(list(downloaded_file.values())[0]["path"], list(downloaded_file.values())[0]["metadata"])
+        edt.write_music_metadata(downloaded_file, metadata)
         
 
 if __name__ == "__main__":
