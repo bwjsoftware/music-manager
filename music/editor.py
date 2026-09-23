@@ -89,7 +89,7 @@ def _write_id3_tag(tags: ID3, metadata: dict):
             continue
         if value is None:
             continue
-        data = KEY_MAP["ID3"][key]
+        data = KEY_MAP[key]["ID3"]
         if data is None:
             sys.stderr.write(f"Invalid key: {key} for adding metadata\n")
             continue
@@ -121,11 +121,12 @@ def _write_mp3(file: pathlib.Path, metadata: dict):
 def _write_vorbis(file: pathlib.Path, metadata: dict):
     audio = File(file)
     for key, value in metadata.items():
+        print(key, value)
         if key == "manual":
             continue
         if value is None:
             continue
-        data = KEY_MAP["Vorbis"][key]
+        data = KEY_MAP[key]["Vorbis"]
         if data is None:
             sys.stderr.write(f"Invalid key: {key} for adding metadata\n")
             continue
@@ -139,6 +140,7 @@ def _write_vorbis(file: pathlib.Path, metadata: dict):
         return False
 
 def write_music_metadata(file: pathlib.Path, metadata: dict):
+    print("write metadata")
     audio = File(file)
     if audio is None:
         sys.stderr.write(f"Unrecongized or corrupt file\n")
@@ -146,7 +148,7 @@ def write_music_metadata(file: pathlib.Path, metadata: dict):
     if isinstance(audio, MP3):
         return _write_mp3(file, metadata)
     elif isinstance(audio, (FLAC, OggOpus)):
-        return _write_vorbis
+        return _write_vorbis(file, metadata)
     else:
         sys.stderr.write(f"Unsupported file type: {type(audio).__name__}\n")
         return False
