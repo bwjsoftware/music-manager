@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 import uuid
 import json
 from csv import DictReader
+import shutil
 
 import download as dl
 import editor as edt
@@ -31,14 +32,45 @@ def parse_arguments():
     download_exlusive.add_argument("-f", "--file", type=pathlib.Path, default=None, help="Path to json/csv file to batch download links")
     download_exlusive.add_argument("-l", "--link", type=str, default=None, help="Link to audio to download")
 
-    download.add_argument("--manual-path", type=pathlib.Path, help="Manually specified path where the music file should be placed in the library. By default files will be placed in a folder structure like 'artist/album/file.mp3'")
+    download.add_argument("--manual-path", type=pathlib.Path, default=None, help="Manually specified path where the music file should be placed in the library. By default files will be placed in a folder structure like 'artist/album/file.mp3'")
     download.add_argument("--max-bitrate", type=int, default=-1, help="Cap the maximum bitrate for audio. Ex: 192 for 192k in opus or for 192 kpbs in mp3.")
     download.add_argument("--codec", type=str, default="opus", help="Specifiy the prefered container type. Ex: mp3, opus, flac. opus is the default if not specified. If an option is not availble when downloading the music clip will be downloaded with the highest available quality from any container type and then converted to the prefered container type.")
 
     for arg in edt.KEY_MAP.keys():
-        download.add_argument(f"--{arg}", default=None, help=f"Override/Manually set the {arg} metadata field")
+        download.add_argument(f"--{arg}", default=None, type=lambda x: x.split(","), help=f"Override/Manually set the {arg} metadata field")
     
     return parser.parse_args()
+
+
+def move_file(file: dict, music_dir: pathlib.Path, manual_path: pathlib.Path):
+    src_path = file["path"]
+    if manual_path is not None:
+        dest_path = music_dir / manual_path / file["metadata"]["title"][0]
+        dest_path.with_suffix(src_path.suffix)
+    else:
+        if file["metadata"]["composer"] is not None:
+            artist = file["metadata"]["composer"][0]
+        elif file["metadata"]["albumartist"] is not None:
+            artist = file["metadata"]["albumartist"][0]
+        else:
+            artist = file["metadata"]["artist"][0]
+
+        album = str(file["metadata"]["album"][0])
+        if artist == album:
+            dest_path = music_dir / artist
+        else:
+            dest_path = music_dir / artist / album
+        dest_path.with_suffix(src_path.suffix)
+
+    dest_path.mkdir(parents=True, exist_ok=True)
+    if dest_path.exists():
+        choice = input(f"File {dest_path} already exists\nDo you want to replace it? [y/N]: ").strip().lower()
+        if choice in ("y", "yes"):
+            dest_path.unlink()
+        else:
+            return
+
+    shutil.move(str(src_path), str(dest_path))
 
 
 def read_file(batch_file: pathlib.Path):
@@ -73,7 +105,8 @@ def main():
         print(data)
 
     if args.link is not None:
-        downloaded_file = download_music(args.link, str(uuid.uuid4()), args.max_bitrate, args.codec, args.download_dir)
+        file_id = uuid.uuid4()
+        downloaded_file = download_music(args.link, str(file_id), args.max_bitrate, args.codec, args.download_dir)
         
         metadata = {}
         arguments = vars(args)
@@ -82,6 +115,8 @@ def main():
                 metadata[key] = arguments[key]
         print(downloaded_file)
         edt.write_music_metadata(downloaded_file, metadata)
+        file_dict = {"path": downloaded_file, "metadata": metadata}
+        move_file(file_dict, args.music_dir, args.manual_path)
         
 
 if __name__ == "__main__":
