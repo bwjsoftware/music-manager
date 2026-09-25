@@ -121,7 +121,6 @@ def _write_mp3(file: pathlib.Path, metadata: dict):
 def _write_vorbis(file: pathlib.Path, metadata: dict):
     audio = File(file)
     for key, value in metadata.items():
-        print(key, value)
         if key == "manual":
             continue
         if value is None:
@@ -140,7 +139,9 @@ def _write_vorbis(file: pathlib.Path, metadata: dict):
         return False
 
 def write_music_metadata(file: pathlib.Path, metadata: dict):
-    print("write metadata")
+    for key in KEY_MAP.keys():
+        if key not in metadata:
+            metadata[key] = None
     audio = File(file)
     if audio is None:
         sys.stderr.write(f"Unrecongized or corrupt file\n")

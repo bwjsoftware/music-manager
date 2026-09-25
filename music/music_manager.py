@@ -4,6 +4,8 @@ from urllib.parse import urlparse
 import uuid
 import json
 import shutil
+from concurrent.futures import ThreadPoolExecutor
+import functools
 
 import download as dl
 import editor as edt
@@ -52,24 +54,26 @@ def parse_arguments():
 
 
 def move_file(file: dict, music_dir: pathlib.Path, manual_path: pathlib.Path):
+    print(file)
     src_path = file["path"]
     if manual_path is not None:
         dest_path = music_dir / manual_path
     else:
         if file["metadata"]["composer"] is not None:
-            artist = file["metadata"]["composer"][0]
+           artist = file["metadata"]["composer"][0] if isinstance(file["metadata"]["composer"], list) else file["metadata"]["composer"]
         elif file["metadata"]["albumartist"] is not None:
-            artist = file["metadata"]["albumartist"][0]
+            artist = file["metadata"]["albumartist"][0] if isinstance(file["metadata"]["albumartist"], list) else file["metadata"]["albumartist"]
         else:
-            artist = file["metadata"]["artist"][0]
+            artist = file["metadata"]["artist"][0] if isinstance(file["metadata"]["artist"], list) else file["metadata"]["artist"]
 
-        album = str(file["metadata"]["album"][0])
+        album = file["metadata"]["album"][0] if isinstance(file["metadata"]["album"], list) else file["metadata"]["album"]
         if artist == album:
             dest_path = music_dir / artist
         else:
             dest_path = music_dir / artist / album
     dest_path.mkdir(parents=True, exist_ok=True)
-    dest_path = (dest_path / str(file["metadata"]["title"][0])).with_suffix(src_path.suffix)
+    title = file["metadata"]["title"][0] if isinstance(file["metadata"]["title"], list) else file["metadata"]["title"]
+    dest_path = (dest_path / title).with_suffix(src_path.suffix)
 
     if dest_path.exists():
         choice = input(f"File {dest_path} already exists\nDo you want to replace it? [y/N]: ").strip().lower()
@@ -83,7 +87,12 @@ def move_file(file: dict, music_dir: pathlib.Path, manual_path: pathlib.Path):
 def read_file(batch_file: pathlib.Path):
     if not batch_file.is_dir():
         with open(batch_file, "r") as f:
-            return json.load(f)
+            entries = json.load(f)
+
+        for entry in entries:
+            entry["id"] = str(uuid.uuid4())
+        return entries
+    return []
 
 
 def _validate_file(data: list, skip_musicbrainz: bool):
@@ -95,40 +104,33 @@ def _validate_file(data: list, skip_musicbrainz: bool):
             print(f"album is required if skipping musicbrainz in entry: {entry}")
             exit(2)
 
+def _prepare_bulk_music(data: list):
+    files = []
+    for entry in data:
+        files.append((entry["link"], entry["id"]))
+    return files
 
-def download_music(link: str, file_id: str, max_bitrate: int = -1, extention: str = "opus", dir: pathlib.Path = pathlib.Path(".")):
-    opts = {
-        "quiet": True,
-        "no_warnings": False,
-        }
-    format_data = dl.get_formats(link, opts)
-    opts["outtmpl"] = str(dir) + f"/{file_id}.%(ext)s"
-    download_candidate = dl.find_download_candidate(format_data, max_bitrate, extention)
-    opts["format"] = download_candidate["format_id"]
-    downloaded_file = dl.download_file(link, opts, extention)
-    return downloaded_file
-
-
-def create_entry(args, entry: dict):
-    file_id = uuid.uuid4()
-    downloaded_file = download_music(entry["link"], str(file_id), args.max_bitrate, args.codec, args.dowload_dir)
-
-    metadata = entry["metadata"]
-    edt.write_music_metadata(downloaded_file, metadata)
-    file_dict = {"path": downloaded_file, "metadata": metadata}
-    move_file(file_dict, args.music_dir, args.manual_path)
-    
 
 def main():
     args = parse_arguments()
     print(args)
 
     if args.file is not None:
+        files = {}
         data = read_file(args.file)
         _validate_file(data, args.skip_musicbrainz)
+        files_to_download = _prepare_bulk_music(data)
+        downloader_func = functools.partial(dl.download_music, max_bitrate=args.max_bitrate, extention=args.codec, dir=args.download_dir)
+        with ThreadPoolExecutor(max_workers=5) as threads:
+            results = threads.map(downloader_func, files_to_download)
         for entry in data:
-            # create_entry(args, entry)
-            pass
+            for downloaded_file, file_id in list(results):
+                if file_id == entry["id"]:
+                    entry["path"] = downloaded_file
+        print(data)
+        for entry in data:
+            edt.write_music_metadata(entry["path"], entry["metadata"])
+            move_file({"path": entry["path"], "metadata": entry["metadata"]}, args.music_dir, args.manual_path)
 
     if args.link is not None:
         metadata = {}
@@ -138,7 +140,12 @@ def main():
                 metadata[key] = arguments[key]
 
         entry = {"link": args.link, "metadata": metadata}
-        create_entry(args, entry)
+        file_id = uuid.uuid4()
+        downloaded_file, _ = dl.download_music((entry["link"], str(file_id)), args.max_bitrate, args.codec, args.download_dir)
+        metadata = entry["metadata"]
+        edt.write_music_metadata(downloaded_file, metadata)
+        file_dict = {"path": downloaded_file, "metadata": metadata}
+        move_file(file_dict, args.music_dir, args.manual_path)
 
         
 

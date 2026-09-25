@@ -43,3 +43,17 @@ def download_file(url: str, opts: dict, extention: str):
         return extracted_path
     except Exception as e:
         print(e)
+
+
+def download_music(file: tuple, max_bitrate: int = -1, extention: str = "opus", dir: pathlib.Path = pathlib.Path(".")):
+    opts = {
+        "quiet": True,
+        "no_warnings": False,
+        }
+    format_data = get_formats(file[0], opts)
+    opts["outtmpl"] = str(dir) + f"/{file[1]}.%(ext)s"
+    download_candidate = find_download_candidate(format_data, max_bitrate, extention)
+    opts["format"] = download_candidate["format_id"]
+    downloaded_file = download_file(file[0], opts, extention)
+    return downloaded_file, file[1]
+
