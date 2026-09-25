@@ -2,6 +2,7 @@
 ## This is a music manager made in Python with the mutagen library
 ## Please note that currently only mp3, flac, opus, ogg files are supported
 ## Plase note that musicbrainz api integration is currently not implemented. Should be comming soon
+Because of this it is recommended to add the `--skip-musicbrainz` parameter since there is no api for it to use right now
 
 ## Use
 ```
@@ -94,6 +95,8 @@ options:
                         Override/Manually set the discnumber metadata field
 ```
 
+title and artist are required when using a single link. *album is is also required if `--skip-musicbrainz` is passed as an argument \
+
 ## JSON Files
 JSON files are supported but they need to be in the format:
 
@@ -122,6 +125,6 @@ JSON files are supported but they need to be in the format:
 ]
 ```
 
-With each entry being a dictionary in the list. Only the title, artist are required. *album is also required if `--skip-musicbrainz` is not passed as an argument* \\
+With each entry being a dictionary in the list. Only the title, artist are required. *album is also required if `--skip-musicbrainz` is not passed as an argument* \
 
 
