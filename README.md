@@ -95,7 +95,7 @@ options:
                         Override/Manually set the discnumber metadata field
 ```
 
-title and artist are required when using a single link. *album is is also required if `--skip-musicbrainz` is passed as an argument \
+title and artist are required when using a single link. *album is is also required if `--skip-musicbrainz` is passed as an argument
 
 ## JSON Files
 JSON files are supported but they need to be in the format:
@@ -125,6 +125,6 @@ JSON files are supported but they need to be in the format:
 ]
 ```
 
-With each entry being a dictionary in the list. Only the title, artist are required. *album is also required if `--skip-musicbrainz` is not passed as an argument* \
+With each entry being a dictionary in the list. Only the title, artist are required. *album is also required if `--skip-musicbrainz` is not passed as an argument*
 
 
