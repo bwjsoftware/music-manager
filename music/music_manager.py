@@ -3,7 +3,6 @@ import pathlib
 from urllib.parse import urlparse
 import uuid
 import json
-from csv import DictReader
 import shutil
 
 import download as dl
@@ -37,9 +36,19 @@ def parse_arguments():
     download.add_argument("--codec", type=str, default="opus", help="Specifiy the prefered container type. Ex: mp3, opus, flac. opus is the default if not specified. If an option is not availble when downloading the music clip will be downloaded with the highest available quality from any container type and then converted to the prefered container type.")
 
     for arg in edt.KEY_MAP.keys():
-        download.add_argument(f"--{arg}", default=None, type=lambda x: x.split(","), help=f"Override/Manually set the {arg} metadata field", required=True if arg in ("title", "artist") else False)
+        download.add_argument(f"--{arg}", default=None, type=lambda x: x.split(","), help=f"Override/Manually set the {arg} metadata field")
     
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    if args.link is not None:
+        if args.title is None or args.artist is None:
+            print("--title, --artist are required if --link is given")
+            exit(1)
+        elif args.skip_musicbrainz is False and args.album is None:
+            print("--album is required if not using musicbrainz to get metadata")
+            exit(2)
+
+    return args
 
 
 def move_file(file: dict, music_dir: pathlib.Path, manual_path: pathlib.Path):
@@ -73,12 +82,18 @@ def move_file(file: dict, music_dir: pathlib.Path, manual_path: pathlib.Path):
 
 def read_file(batch_file: pathlib.Path):
     if not batch_file.is_dir():
-        if batch_file.suffix == ".json":
-            with open(batch_file, "r") as f:
-                return json.load(f)
-        elif batch_file.suffix == ".csv":
-            with open(batch_file, "r") as f:
-                return list(DictReader(f))
+        with open(batch_file, "r") as f:
+            return json.load(f)
+
+
+def _validate_file(data: list, skip_musicbrainz: bool):
+    for entry in data:
+        if "title" not in entry["metadata"] or "artist" not in entry["metadata"]:
+            print(f"title or artist is missing for entry: {entry}")
+            exit(1)
+        elif "album" not in entry["metadata"] and skip_musicbrainz is False:
+            print(f"album is required if skipping musicbrainz in entry: {entry}")
+            exit(2)
 
 
 def download_music(link: str, file_id: str, max_bitrate: int = -1, extention: str = "opus", dir: pathlib.Path = pathlib.Path(".")):
@@ -94,28 +109,37 @@ def download_music(link: str, file_id: str, max_bitrate: int = -1, extention: st
     return downloaded_file
 
 
+def create_entry(args, entry: dict):
+    file_id = uuid.uuid4()
+    downloaded_file = download_music(entry["link"], str(file_id), args.max_bitrate, args.codec, args.dowload_dir)
+
+    metadata = entry["metadata"]
+    edt.write_music_metadata(downloaded_file, metadata)
+    file_dict = {"path": downloaded_file, "metadata": metadata}
+    move_file(file_dict, args.music_dir, args.manual_path)
+    
+
 def main():
     args = parse_arguments()
     print(args)
 
     if args.file is not None:
         data = read_file(args.file)
-        print(data)
+        _validate_file(data, args.skip_musicbrainz)
+        for entry in data:
+            # create_entry(args, entry)
+            pass
 
     if args.link is not None:
-        file_id = uuid.uuid4()
-        downloaded_file = download_music(args.link, str(file_id), args.max_bitrate, args.codec, args.download_dir)
-        
         metadata = {}
         arguments = vars(args)
         for key in edt.KEY_MAP.keys():
             if key not in metadata:
                 metadata[key] = arguments[key]
-        print(downloaded_file)
-        print(metadata)
-        edt.write_music_metadata(downloaded_file, metadata)
-        file_dict = {"path": downloaded_file, "metadata": metadata}
-        move_file(file_dict, args.music_dir, args.manual_path)
+
+        entry = {"link": args.link, "metadata": metadata}
+        create_entry(args, entry)
+
         
 
 if __name__ == "__main__":
