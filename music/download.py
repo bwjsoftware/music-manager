@@ -57,3 +57,6 @@ def download_music(file: tuple, max_bitrate: int = -1, extention: str = "opus", 
     downloaded_file = download_file(file[0], opts, extention)
     return downloaded_file, file[1]
 
+
+if __name__ == "__main__":
+    pass
