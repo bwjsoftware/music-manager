@@ -4,7 +4,7 @@
 ## Plase note that musicbrainz api integration is currently not implemented. Should be comming soon
 
 ## Use
-
+```
 usage: Music Manager [-h] {set,get} ...
 
 This program edits music metadata and organizes music files. For downloading
@@ -21,9 +21,10 @@ positional arguments:
 
 options:
   -h, --help  show this help message and exit
+```
 
 ### Using set
-
+```
 usage: Music Manager set [-h] -f FILE field field-value
 
 positional arguments:
@@ -36,9 +37,10 @@ positional arguments:
 options:
   -h, --help       show this help message and exit
   -f, --file FILE  Path to the file to be modified
+```
 
 ### Using get
-
+```
 usage: Music Manager get [-h] [-m MUSIC_DIR] [-d DOWNLOAD_DIR]
                          [--skip-musicbrainz] [-f FILE | -l LINK]
                          [--manual-path MANUAL_PATH]
@@ -90,6 +92,7 @@ options:
                         Override/Manually set the tracknmber metadata field
   --discnumber DISCNUMBER
                         Override/Manually set the discnumber metadata field
+```
 
 ## JSON Files
 JSON files are supported but they need to be in the format:
