@@ -21,6 +21,9 @@ def parse_arguments():
     editor.add_argument("field-value", type=lambda s: s.split(','), 
                         help="A comma separated list of values for the field. NOTE: Some fields do not support multiple values. The list is mainly for fields like genre, while fields like title can only take one value.")
     editor.add_argument("-f", "--file", required=True, type=pathlib.Path, help="Path to the file to be modified")
+    
+    editor.add_argument("--start", type=str, default=None, help="Modify the start time of the file. The beginning of the file is used by default if not specified. Ex: 00:00:00.000")
+    editor.add_argument("--end", type=str, default=None, help="Modify the end time of the file. The end of the file is used by defalt if not specified. Ex: 00:02:33.055")
 
     download = subparser.add_parser("get", 
                                     help="Downloads music file using 'yt-dlp' and sorts into library. Metadata can be automatically optained from MusicBrainz if --title and --artist are given. The search can be narrowed down more if other keys are given (Not all keys are used for MusicBrainz api search).")
@@ -37,6 +40,9 @@ def parse_arguments():
     download.add_argument("--max-bitrate", type=int, default=-1, help="Cap the maximum bitrate for audio. Ex: 192 for 192k in opus or for 192 kpbs in mp3.")
     download.add_argument("--codec", type=str, default="opus", help="Specifiy the prefered container type. Ex: mp3, opus, flac. opus is the default if not specified. If an option is not availble when downloading the music clip will be downloaded with the highest available quality from any container type and then converted to the prefered container type.")
 
+    download.add_argument("--start", type=str, default=None, help="The start time of the created file. The beginning of the file is used by default if not specified. Ex: 00:00:00.000")
+    download.add_argument("--end", type=str, default=None, help="The end time fo the created file. The end of the file is used by defalt if not specified. Ex: 00:02:33.055")
+
     for arg in edt.KEY_MAP.keys():
         download.add_argument(f"--{arg}", default=None, type=lambda x: x.split(","), help=f"Override/Manually set the {arg} metadata field")
     
@@ -51,7 +57,6 @@ def parse_arguments():
             exit(2)
 
     return args
-
 
 def move_file(file: dict, music_dir: pathlib.Path, manual_path: pathlib.Path):
     print(file)
@@ -83,7 +88,6 @@ def move_file(file: dict, music_dir: pathlib.Path, manual_path: pathlib.Path):
             return
     shutil.move(str(src_path), str(dest_path))
 
-
 def read_file(batch_file: pathlib.Path):
     if not batch_file.is_dir():
         with open(batch_file, "r") as f:
@@ -93,7 +97,6 @@ def read_file(batch_file: pathlib.Path):
             entry["id"] = str(uuid.uuid4())
         return entries
     return []
-
 
 def _validate_file(data: list, skip_musicbrainz: bool):
     for entry in data:
@@ -109,7 +112,6 @@ def _prepare_bulk_music(data: list):
     for entry in data:
         files.append((entry["link"], entry["id"]))
     return files
-
 
 def main():
     args = parse_arguments()
@@ -127,7 +129,6 @@ def main():
             for downloaded_file, file_id in list(results):
                 if file_id == entry["id"]:
                     entry["path"] = downloaded_file
-        print(data)
         for entry in data:
             edt.write_music_metadata(entry["path"], entry["metadata"])
             move_file({"path": entry["path"], "metadata": entry["metadata"]}, args.music_dir, args.manual_path)
@@ -146,8 +147,6 @@ def main():
         edt.write_music_metadata(downloaded_file, metadata)
         file_dict = {"path": downloaded_file, "metadata": metadata}
         move_file(file_dict, args.music_dir, args.manual_path)
-
-        
 
 if __name__ == "__main__":
     main()
