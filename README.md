@@ -131,6 +131,34 @@ JSON files are supported but they need to be in the format:
 ]
 ```
 
+JSON file that includes the `start` and `end` keys for trimming the music file:
+```
+[
+	{
+		"link": "https://www.youtube.com/watch?v=Xg72z08aTXY&pp=ygUQYmVnZ2luIG3DpW5lc2tpbg%3D%3D",
+        "start": "00:00:04",
+        "end": "00:03:20",
+		"metadata": {
+				"title": "Beggin'",
+				"artist": "Måneskin",
+				"album": "Chosen",
+				"genre": [
+					"Italian Pop",
+					"Indie Rock Italiano",
+					"Pop Rock",
+					"Alternative Rock",
+					"Glam Rock",
+					"Hard Rock",
+					"Funk Rock"
+				],
+				"language": "eng",
+				"date": "2017",
+				"grouping": "English"
+		}
+	}
+]
+```
+
 With each entry being a dictionary in the list. Only the title, artist are required. *album is also required if `--skip-musicbrainz` is not passed as an argument*
 
 
