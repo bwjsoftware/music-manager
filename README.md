@@ -4,6 +4,23 @@
 ## Plase note that musicbrainz api integration is currently not implemented. Should be comming soon
 Because of this it is recommended to add the `--skip-musicbrainz` parameter since there is no api for it to use right now
 
+## Requirments
+Please run
+
+    pip install -r requirements
+
+to install the dpendencies in your python virtual environment.
+
+If you are unsure how to create a python virtual environment run
+
+    python3 -m venv venv
+
+And then to source that virtual environment run
+
+    source venv/bin/activate
+
+Now you can install the dependencies
+
 ## Use
 ```
 usage: Music Manager [-h] {set,get} ...
