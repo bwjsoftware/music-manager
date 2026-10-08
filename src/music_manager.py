@@ -143,7 +143,7 @@ def main():
         entry = {"link": args.link, "metadata": metadata}
         file_id = uuid.uuid4()
         downloaded_file, _ = dl.download_music((entry["link"], str(file_id)), args.max_bitrate, args.codec, args.download_dir)
-        if args.start is not None or args.end is not None:
+        if args.start != "00:00:00" or args.end is not None:
             downloaded_file = dl.trim_music(downloaded_file, args.start, args.end)
         metadata = entry["metadata"]
         edt.write_music_metadata(downloaded_file, metadata)
