@@ -130,6 +130,13 @@ def main():
                 if file_id == entry["id"]:
                     entry["path"] = downloaded_file
         for entry in data:
+            if "start" in entry or "end" in entry:
+                if "start" not in entry:
+                    entry["path"] = dl.trim_music(entry["path"], "00:00:00", entry["end"])
+                elif "end" not in entry:
+                    entry["path"] = dl.trim_music(entry["path"], entry["start"], None)
+                else:
+                    entry["path"] = dl.trim_music(entry["path"], entry["start"], entry["end"])
             edt.write_music_metadata(entry["path"], entry["metadata"])
             move_file({"path": entry["path"], "metadata": entry["metadata"]}, args.music_dir, args.manual_path)
 
