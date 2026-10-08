@@ -9,7 +9,7 @@ Please run
 
     pip install -r requirements
 
-to install the dpendencies in your python virtual environment.
+to install the dependencies in your python virtual environment.
 
 If you are unsure how to create a python virtual environment run
 
