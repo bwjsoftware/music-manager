@@ -11,7 +11,6 @@ def get_formats(url: str, opts: dict):
     except Exception as e:
         print(e)
 
-
 def sort_formats(fmts: list):
     audio_only_fmts = [fmt for fmt in fmts if fmt.get("vcodec") == "none" and fmt.get("acodec") != "none" and fmt.get("abr") is not None and "drc" not in fmt.get("format_id")]
     original_audio_fmts = [fmt for fmt in audio_only_fmts if "original" in fmt.get("format_note") or "dubbed" not in fmt.get("format_note")]
@@ -25,7 +24,6 @@ def find_download_candidate(fmts: list, max_bitrate: int = -1, extention: str = 
 
     fmts = [fmt for fmt in fmts if extention in fmt.get("acodec")]
     return fmts[-1] if len(fmts) > 0 else {}
-
 
 def download_file(url: str, opts: dict, extention: str):
     try:
@@ -44,7 +42,6 @@ def download_file(url: str, opts: dict, extention: str):
     except Exception as e:
         print(e)
 
-
 def download_music(file: tuple, max_bitrate: int = -1, extention: str = "opus", dir: pathlib.Path = pathlib.Path(".")):
     opts = {
         "quiet": True,
@@ -57,6 +54,19 @@ def download_music(file: tuple, max_bitrate: int = -1, extention: str = "opus", 
     downloaded_file = download_file(file[0], opts, extention)
     return downloaded_file, file[1]
 
+def trim_music(file: pathlib.Path, start: str, end: str):
+    new_path = file.with_suffix(f".cut{file.suffix}")
+    if end is None:
+        cmd = ["ffmpeg", "-i", str(file), "-ss", start, "-c", "copy", str(new_path)]
+    else:
+        cmd = ["ffmpeg", "-i", str(file), "-ss", start, "-to", end, "-c", "copy", str(new_path)]
+
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+    except Exception as e:
+        print(e)
+        return file
+    return new_path
 
 if __name__ == "__main__":
     pass

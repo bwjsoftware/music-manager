@@ -40,7 +40,7 @@ def parse_arguments():
     download.add_argument("--max-bitrate", type=int, default=-1, help="Cap the maximum bitrate for audio. Ex: 192 for 192k in opus or for 192 kpbs in mp3.")
     download.add_argument("--codec", type=str, default="opus", help="Specifiy the prefered container type. Ex: mp3, opus, flac. opus is the default if not specified. If an option is not availble when downloading the music clip will be downloaded with the highest available quality from any container type and then converted to the prefered container type.")
 
-    download.add_argument("--start", type=str, default=None, help="The start time of the created file. The beginning of the file is used by default if not specified. Ex: 00:00:00.000")
+    download.add_argument("--start", type=str, default="00:00:00", help="The start time of the created file. The beginning of the file is used by default if not specified. Ex: 00:00:00.000")
     download.add_argument("--end", type=str, default=None, help="The end time fo the created file. The end of the file is used by defalt if not specified. Ex: 00:02:33.055")
 
     for arg in edt.KEY_MAP.keys():
@@ -143,6 +143,8 @@ def main():
         entry = {"link": args.link, "metadata": metadata}
         file_id = uuid.uuid4()
         downloaded_file, _ = dl.download_music((entry["link"], str(file_id)), args.max_bitrate, args.codec, args.download_dir)
+        if args.start is not None or args.end is not None:
+            downloaded_file = dl.trim_music(downloaded_file, args.start, args.end)
         metadata = entry["metadata"]
         edt.write_music_metadata(downloaded_file, metadata)
         file_dict = {"path": downloaded_file, "metadata": metadata}
