@@ -46,7 +46,8 @@ usage: Music Manager get [-h] [-m MUSIC_DIR] [-d DOWNLOAD_DIR]
                          [--skip-musicbrainz] [-f FILE | -l LINK]
                          [--manual-path MANUAL_PATH]
                          [--max-bitrate MAX_BITRATE] [--codec CODEC]
-                         [--title TITLE] [--artist ARTIST] [--album ALBUM]
+                         [--start START] [--end END] [--title TITLE]
+                         [--artist ARTIST] [--album ALBUM]
                          [--albumartist ALBUMARTIST] [--composer COMPOSER]
                          [--genre GENRE] [--date DATE] [--language LANGUAGE]
                          [--grouping GROUPING] [--tracknmber TRACKNMBER]
@@ -79,6 +80,11 @@ options:
                         will be downloaded with the highest available quality
                         from any container type and then converted to the
                         prefered container type.
+  --start START         The start time of the created file. The beginning of
+                        the file is used by default if not specified. Ex:
+                        00:00:00.000
+  --end END             The end time fo the created file. The end of the file
+                        is used by defalt if not specified. Ex: 00:02:33.055
   --title TITLE         Override/Manually set the title metadata field
   --artist ARTIST       Override/Manually set the artist metadata field
   --album ALBUM         Override/Manually set the album metadata field
